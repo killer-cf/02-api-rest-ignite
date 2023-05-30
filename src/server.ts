@@ -1,18 +1,11 @@
 import fastify from 'fastify'
-import { prisma } from './lib/prisma'
 import { env } from './env'
+import { transactionsRoutes } from './routes/transactions'
 
 const app = fastify()
 
-app.get('/hello', async () => {
-  const transaction = await prisma.transaction.create({
-    data: {
-      title: 'Transação de teste',
-      amount: 1000,
-    },
-  })
-
-  return transaction
+app.register(transactionsRoutes, {
+  prefix: 'transactions',
 })
 
 app
