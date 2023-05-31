@@ -2,42 +2,71 @@ import { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma'
 import { z } from 'zod'
 import { randomUUID } from 'crypto'
+import { checkSessionIdExists } from '../middlewares/check-session-id-exists'
 
 export async function transactionsRoutes(app: FastifyInstance) {
-  app.get('/', async () => {
-    const transactions = await prisma.transaction.findMany()
+  app.get(
+    '/',
+    {
+      preHandler: [checkSessionIdExists],
+    },
+    async (req, res) => {
+      const { sessionId } = req.cookies
 
-    return { transactions }
-  })
+      const transactions = await prisma.transaction.findMany({
+        where: { session_id: sessionId },
+      })
 
-  app.get('/:id', async (req) => {
-    const setTransactionParamsSchema = z.object({
-      id: z.string().uuid(),
-    })
+      return { transactions }
+    },
+  )
 
-    const { id } = setTransactionParamsSchema.parse(req.params)
+  app.get(
+    '/:id',
+    {
+      preHandler: [checkSessionIdExists],
+    },
+    async (req) => {
+      const setTransactionParamsSchema = z.object({
+        id: z.string().uuid(),
+      })
 
-    const transaction = await prisma.transaction.findUnique({
-      where: {
-        id,
-      },
-    })
+      const { id } = setTransactionParamsSchema.parse(req.params)
 
-    return { transaction }
-  })
+      const { sessionId } = req.cookies
 
-  app.get('/summary', async () => {
-    const summary = (await prisma.transaction.findMany()).reduce(
-      (acc, transaction) => {
+      const transaction = await prisma.transaction.findFirst({
+        where: {
+          id,
+          session_id: sessionId,
+        },
+      })
+
+      return { transaction }
+    },
+  )
+
+  app.get(
+    '/summary',
+    {
+      preHandler: [checkSessionIdExists],
+    },
+    async (req) => {
+      const { sessionId } = req.cookies
+
+      const summary = (
+        await prisma.transaction.findMany({
+          where: { session_id: sessionId },
+        })
+      ).reduce((acc, transaction) => {
         acc = acc + Number(transaction.amount)
 
         return acc
-      },
-      0.0,
-    )
+      }, 0.0)
 
-    return { summary }
-  })
+      return { summary }
+    },
+  )
 
   app.post('/', async (req, res) => {
     const createTransactionBodySchema = z.object({
