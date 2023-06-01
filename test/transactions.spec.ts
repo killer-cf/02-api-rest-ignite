@@ -40,7 +40,7 @@ describe('Transactions routes', () => {
     expect(listTransactionsResponse.body.transactions).toEqual([
       expect.objectContaining({
         title: 'New transaction',
-        amount: 5000,
+        amount: '5000',
       }),
     ])
   })
